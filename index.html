@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Birthday Muri!</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #ff4d6d;
+            --secondary: #ff8fa3;
+            --bg: #fff0f3;
+            --envelope-col: #ff758f;
+            --envelope-shadow: rgba(164, 19, 60, 0.3);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            height: 100dvh; /* Dynamic Height for Mobile */
+            width: 100vw;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* --- 3D FALLING BACKGROUND --- */
+        #bg-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden; z-index: 0; pointer-events: none;
+        }
+        .falling-item {
+            position: absolute; top: -10%;
+            font-size: clamp(20px, 5vw, 40px);
+            opacity: 0.7;
+        }
+        @keyframes fallRotate {
+            0% { transform: translateY(0) rotateX(0) rotateY(0); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(120vh) rotateX(360deg) rotateY(360deg); opacity: 0.5; }
+        }
+
+        /* --- REALISTIC ENVELOPE SYSTEM --- */
+        .envelope-wrapper {
+            position: relative;
+            width: min(85vw, 350px);
+            height: min(60vw, 220px);
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .envelope {
+            position: relative;
+            width: 100%; height: 100%;
+            transform-style: preserve-3d;
+        }
+
+        /* 1. The Back of the Envelope */
+        .env-back {
+            position: absolute; width: 100%; height: 100%;
+            background: #ff8fa3;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px var(--envelope-shadow);
+            z-index: 1;
+        }
+
+        /* 2. The Letter (Hidden Inside) */
+        .paper {
+            position: absolute;
+            left: 5%; bottom: 0;
+            width: 90%; height: 90%;
+            background: #fff;
+            border-radius: 5px;
+            transition: 0.6s;
+            z-index: 2; /* Initially inside */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+
+        .paper h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: clamp(1.5rem, 6vw, 2.2rem);
+            color: var(--primary);
+            margin: 0;
+            opacity: 0; /* Hidden text initially */
+        }
+        
+        .paper p { font-size: 0.8rem; color: #888; margin-top: 5px; opacity: 0; }
+
+        /* 3. The Front Pocket (Triangles) */
+        .env-pocket {
+            position: absolute; bottom: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 3; /* Covers the paper */
+            pointer-events: none; /* Let clicks pass to flap */
+        }
+        
+        /* CSS Triangle Trick for Realistic Pocket */
+        .env-pocket::before { /* Left/Right Flaps */
+            content: ''; position: absolute;
+            width: 100%; height: 100%;
+            top: 0; left: 0;
+            border-right: min(42.5vw, 175px) solid transparent;
+            border-bottom: min(30vw, 110px) solid #ff5d7a;
+            border-left: min(42.5vw, 175px) solid transparent;
+            border-radius: 0 0 10px 10px;
+        }
+        .env-pocket::after { /* Bottom Flap */
+            content: ''; position: absolute;
+            width: 100%; height: 100%;
+            top: 0; left: 0;
+            border-left: min(42.5vw, 175px) solid #ff758f;
+            border-bottom: min(30vw, 110px) solid #ff758f;
+            border-right: min(42.5vw, 175px) solid #ff758f;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* 4. The Top Flap (Opens Up) */
+        .env-flap {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 4;
+            transform-origin: top;
+            transition: 0.6s ease-in-out;
+        }
+        
+        .env-flap::after {
+            content: ''; position: absolute;
+            width: 100%; height: 100%;
+            top: 0; left: 0;
+            border-left: min(42.5vw, 175px) solid transparent;
+            border-top: min(30vw, 110px) solid #ff8fa3; /* Slightly darker */
+            border-right: min(42.5vw, 175px) solid transparent;
+            border-radius: 10px 10px 0 0;
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.1));
+        }
+
+        /* --- HEART REVEAL --- */
+        .heart-stage {
+            position: absolute; width: 100%; height: 100%;
+            display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 20;
+        }
+
+        .heart-frame {
+            width: min(80vw, 320px);
+            aspect-ratio: 1/1;
+            position: relative;
+            transform: scale(0);
+        }
+
+        /* SVG Clip Path for Clean Heart Shape */
+        .heart-frame img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            clip-path: path("M160,280 C60,200 0,140 0,80 C0,30 40,0 90,0 C125,0 150,30 160,50 C170,30 195,0 230,0 C280,0 320,30 320,80 C320,140 260,200 160,280 Z");
+            filter: drop-shadow(0 0 15px rgba(255, 77, 109, 0.6));
+        }
+
+        .more-btn {
+            margin-top: 20px;
+            padding: 12px 35px;
+            border-radius: 50px;
+            border: none;
+            background: white;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* --- 3D CAROUSEL (Bottom Center Div) --- */
+        .carousel-container {
+            position: fixed;
+            bottom: 5dvh; /* Positioned at bottom */
+            left: 50%;
+            transform: translateX(-50%) translateY(200%); /* Hidden below initially */
+            width: 100%;
+            max-width: 600px;
+            height: 280px;
+            z-index: 50;
+        }
+
+        .swiper {
+            width: 100%;
+            height: 100%;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .swiper-slide {
+            background-position: center;
+            background-size: cover;
+            width: 180px;
+            height: 220px;
+            border-radius: 12px;
+            /* Glassy card effect */
+            background: rgba(255,255,255,0.8);
+            border: 2px solid white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .swiper-slide img {
+            display: block; width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-container"></div>
+
+    <div class="envelope-wrapper" id="envelope">
+        <div class="envelope">
+            <div class="env-back"></div>
+            <div class="paper" id="paper">
+                <h1 id="paperTitle">Happy Birthday,<br>Muri! 🎉</h1>
+                <p id="paperSub">(Tap to see surprise)</p>
+            </div>
+            <div class="env-pocket"></div>
+            <div class="env-flap" id="flap"></div>
+        </div>
+    </div>
+
+    <div class="heart-stage" id="heartStage">
+        <div class="heart-frame" id="heartFrame">
+            <img src="8da0cb85-45b8-443c-aa3f-e5b24022ff07.jpeg" alt="Muri">
+        </div>
+        <button class="more-btn" id="moreBtn">More ❤️</button>
+    </div>
+
+    <div class="carousel-container" id="carouselSection">
+        <div class="swiper mySwiper">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide"><img src="d9ab8a52-a36d-4df9-9f72-3a0d6196e213.jpeg"></div>
+                <div class="swiper-slide"><img src="18594b0f-448c-42a7-b07b-72eef27d07e8.jpeg"></div>
+                <div class="swiper-slide"><img src="20e0d67a-7a8d-4acb-b67a-2df9584d432a.jpeg"></div>
+                <div class="swiper-slide"><img src="8da0cb85-45b8-443c-aa3f-e5b24022ff07.jpeg"></div>
+                <div class="swiper-slide"><img src="bebb88e2-d5b1-4b03-bbc2-872804d2b0e3 (1).jpeg"></div>
+                <div class="swiper-slide"><img src="9287ce45-bd66-43e6-b497-2df1028c1431.jpeg"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // --- A. BACKGROUND GENERATOR (3D & Infinite) ---
+        function createBackground() {
+            const container = document.getElementById('bg-container');
+            const items = ['❤️', '🍓', '🎂', '🍓', '❤️']; 
+            for(let i=0; i<30; i++) {
+                let el = document.createElement('div');
+                el.classList.add('falling-item');
+                el.innerText = items[Math.floor(Math.random()*items.length)];
+                el.style.left = Math.random()*100 + 'vw';
+                el.style.animation = `fallRotate ${Math.random()*5 + 5}s linear infinite`;
+                el.style.animationDelay = Math.random()*5 + 's';
+                container.appendChild(el);
+            }
+        }
+        createBackground();
+
+        // --- B. ENVELOPE LOGIC ---
+        const envelope = document.getElementById('envelope');
+        const flap = document.getElementById('flap');
+        const paper = document.getElementById('paper');
+        const title = document.getElementById('paperTitle');
+        const sub = document.getElementById('paperSub');
+        const heartStage = document.getElementById('heartStage');
+        const heartFrame = document.getElementById('heartFrame');
+        const moreBtn = document.getElementById('moreBtn');
+        const carouselSection = document.getElementById('carouselSection');
+
+        let isOpened = false;
+
+        // 1. Click Envelope -> Open Flap & Slide Paper OUT
+        envelope.addEventListener('click', () => {
+            if(isOpened) return;
+            isOpened = true;
+
+            const tl = gsap.timeline();
+
+            // Open Flap (Realistic rotation)
+            tl.to(flap, { duration: 0.6, rotationX: 180, ease: "power2.inOut" })
+            // Slide Paper UP from inside
+              .to(paper, { duration: 0.8, y: -150, zIndex: 5, ease: "power2.out" })
+            // Reveal Text on Paper
+              .to([title, sub], { duration: 0.5, opacity: 1 }, "-=0.3")
+              .add(() => {
+                  paper.style.cursor = 'pointer';
+                  paper.addEventListener('click', startReveal);
+              });
+        });
+
+        // 2. Click Paper -> Show Heart Frame
+        function startReveal(e) {
+            e.stopPropagation(); // Don't trigger envelope click
+            
+            const tl = gsap.timeline();
+
+            // Hide Envelope
+            tl.to(envelope, { duration: 0.5, scale: 0.5, opacity: 0, ease: "power2.in" })
+              .add(() => {
+                  envelope.style.display = 'none';
+                  heartStage.style.display = 'flex';
+              })
+            // Pop Heart
+              .to(heartFrame, { duration: 1, scale: 1, ease: "elastic.out(1, 0.5)" })
+            // Show More Button
+              .to(moreBtn, { duration: 0.4, opacity: 1, y: 0, ease: "back.out" }, "-=0.5");
+        }
+
+        // 3. Click More -> Show 3D Carousel
+        moreBtn.addEventListener('click', () => {
+            // Move Heart UP to make room
+            gsap.to(heartFrame, { duration: 0.8, y: -120, scale: 0.7, ease: "power2.out" });
+            // Hide Button
+            gsap.to(moreBtn, { duration: 0.3, opacity: 0, display: "none" });
+            // Slide Up Carousel
+            gsap.to(carouselSection, { duration: 1, y: 0, ease: "power3.out" });
+            
+            // Confetti Explosion
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ff4d6d', '#ff758f'] });
+        });
+
+        // --- C. SWIPER 3D CONFIG ---
+        var swiper = new Swiper(".mySwiper", {
+            effect: "coverflow",
+            grabCursor: true,
+            centeredSlides: true,
+            slidesPerView: "auto",
+            initialSlide: 2, // Start at the middle
+            coverflowEffect: {
+                rotate: 30, // 3D rotation angle
+                stretch: 0,
+                depth: 200, // Deep 3D effect
+                modifier: 1,
+                slideShadows: true,
+            },
+            autoplay: {
+                delay: 2000,
+                disableOnInteraction: false,
+            }
+        });
+
+    </script>
+</body>
+</html>
